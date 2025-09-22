@@ -8,11 +8,9 @@ RUN npm install
 COPY . .
 
 ENV NODE_ENV=development
-
 RUN npm run build
 
 RUN npm prune --production
 
 EXPOSE 1337
-
 CMD ["npm", "run", "start"]
