@@ -1,32 +1,23 @@
-# Use Node.js 20 LTS
-FROM node:20-bullseye
+# Use Node 18 LTS (Bullseye)
+FROM node:18-bullseye
 
 # Set working directory
 WORKDIR /usr/src/app
 
-# Copy package files first
+# Copy package.json and package-lock.json first
 COPY package.json package-lock.json ./
 
 # Install dependencies
 RUN npm install --legacy-peer-deps
 
-# Copy the rest of the application
+# Copy the rest of the app
 COPY . .
 
-# Build Strapi admin panel
+# Build the Strapi admin panel
 RUN npm run build
 
 # Expose Strapi default port
 EXPOSE 1337
 
-# Set environment variables
-ENV NODE_ENV=production
-ENV DATABASE_CLIENT=postgres
-ENV DATABASE_HOST=db
-ENV DATABASE_PORT=5432
-ENV DATABASE_NAME=strapi
-ENV DATABASE_USERNAME=strapi
-ENV DATABASE_PASSWORD=strapi
-
 # Start Strapi
-CMD ["npm", "run", "start"]
+CMD ["npm", "start"]
