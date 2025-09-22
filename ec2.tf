@@ -1,7 +1,7 @@
 resource "aws_instance" "strapi" {
   ami           = "ami-0c55b159cbfafe1f0" 
   instance_type = "t2.micro"
-  key_name      = var.key_name
+  key_name      = "vinodhini-key"
 
   security_groups      = [aws_security_group.strapi_sg.name]
   iam_instance_profile = aws_iam_instance_profile.ec2_profile.name

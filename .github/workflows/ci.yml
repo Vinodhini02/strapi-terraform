@@ -9,8 +9,10 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
+      # Checkout repo
       - uses: actions/checkout@v3
 
+      # Configure AWS
       - name: Configure AWS
         uses: aws-actions/configure-aws-credentials@v4
         with:
@@ -18,25 +20,31 @@ jobs:
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           aws-region: ${{ secrets.AWS_REGION }}
 
+      # Login to ECR
       - name: Log in to Amazon ECR
         id: login-ecr
         uses: aws-actions/amazon-ecr-login@v2
 
-      - name: Build, Tag, and Push Image
-        id: build-image
+      # Build, Tag, and Push Docker Image
+      - name: Build, Tag & Push
         run: |
           IMAGE_TAG=${GITHUB_SHA::8}
           IMAGE_URI=${{ steps.login-ecr.outputs.registry }}/${{ secrets.ECR_REPOSITORY }}:$IMAGE_TAG
+          LATEST_URI=${{ steps.login-ecr.outputs.registry }}/${{ secrets.ECR_REPOSITORY }}:latest
 
-          docker build -t $IMAGE_URI .
+          docker build --build-arg NODE_OPTIONS="--max_old_space_size=2048" -t $IMAGE_URI .
           docker push $IMAGE_URI
+
+          docker tag $IMAGE_URI $LATEST_URI
+          docker push $LATEST_URI
 
           echo $IMAGE_URI > latest_image.txt
 
-      - name: Commit image tag
+      # Commit image tag safely
+      - name: Commit latest image
         run: |
           git config user.name github-actions
           git config user.email github-actions@github.com
           git add latest_image.txt
-          git commit -m "Update image tag"
-          git push
+          git diff --cached --quiet || git commit -m "Update image tag"
+          git push || echo "No changes to push"

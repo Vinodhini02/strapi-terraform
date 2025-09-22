@@ -1,23 +1,19 @@
-# Use Node 18 LTS (Bullseye)
+
 FROM node:18-bullseye
 
-# Set working directory
 WORKDIR /usr/src/app
 
-# Copy package.json and package-lock.json first
-COPY package.json package-lock.json ./
+COPY package*.json ./
 
-# Install dependencies
-RUN npm install --legacy-peer-deps
+RUN npm ci
 
-# Copy the rest of the app
 COPY . .
 
-# Build the Strapi admin panel
+ARG NODE_OPTIONS
+ENV NODE_OPTIONS=$NODE_OPTIONS
+
 RUN npm run build
 
-# Expose Strapi default port
 EXPOSE 1337
 
-# Start Strapi
-CMD ["npm", "start"]
+CMD ["npm", "run", "start"]
