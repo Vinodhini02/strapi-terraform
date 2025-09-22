@@ -1,39 +1,62 @@
-- uses: actions/checkout@v3
+name: CI - Build & Push Docker Image
 
-- name: Configure AWS credentials
-  uses: aws-actions/configure-aws-credentials@v4
-  with:
-    aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
-    aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-    aws-region: ${{ secrets.AWS_REGION }}
+on:
+  push:
+    branches:
+      - main
 
-- name: Log in to Amazon ECR
-  id: login-ecr
-  uses: aws-actions/amazon-ecr-login@v2
+jobs:
+  build-and-push:
+    name: Build and push to ECR
+    runs-on: ubuntu-latest
 
-- name: Build, tag, and push Docker image to ECR
-  id: build-image
-  run: |
-    set -e
-    IMAGE_TAG=${GITHUB_SHA::8}
-    REGISTRY=${{ steps.login-ecr.outputs.registry }}
-    REPOSITORY=${{ secrets.ECR_REPOSITORY }}
-    IMAGE_URI=${REGISTRY}/${REPOSITORY}:${IMAGE_TAG}
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
 
-    echo "Registry: $REGISTRY"
-    echo "Repository: $REPOSITORY"
-    echo "Image URI: $IMAGE_URI"
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ secrets.AWS_REGION }}
 
-    docker build -t $IMAGE_URI .
-    docker push $IMAGE_URI
+      - name: Log in to Amazon ECR
+        id: login-ecr
+        uses: aws-actions/amazon-ecr-login@v2
 
-    # Save full image URI (one line) for CD to read
-    echo $IMAGE_URI > latest_image.txt
+      - name: Build, tag and push Docker image
+        id: build-image
+        env:
+          ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}   # populated by amazon-ecr-login
+          ECR_REPOSITORY: ${{ secrets.ECR_REPOSITORY }}          # e.g. my-strapi-app
+        run: |
+          set -euo pipefail
 
-- name: Commit latest image file (optional)
-  run: |
-    git config user.name "github-actions"
-    git config user.email "github-actions@github.com"
-    git add latest_image.txt || true
-    git commit -m "chore: update latest_image.txt" || true
-    git push origin main || echo "push failed (token perms?)"
+          # image tag: first 8 chars of the commit SHA
+          IMAGE_TAG=${GITHUB_SHA:0:8}
+
+          # registry and repository
+          REGISTRY="${ECR_REGISTRY}"
+          REPOSITORY="${ECR_REPOSITORY}"
+
+          # single well-formed image URI
+          IMAGE_URI="${REGISTRY}/${REPOSITORY}:${IMAGE_TAG}"
+
+          echo "Registry: $REGISTRY"
+          echo "Repository: $REPOSITORY"
+          echo "Image tag: $IMAGE_TAG"
+          echo "Image URI: $IMAGE_URI"
+
+          # build and push
+          docker build -t "$IMAGE_URI" .
+          docker push "$IMAGE_URI"
+
+          # persist the full image URI in a file for downstream workflows
+          echo "$IMAGE_URI" > latest_image.txt
+
+      - name: Upload image URI artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: latest-image
+          path: latest_image.txt
