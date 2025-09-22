@@ -1,31 +1,32 @@
-FROM node:18-alpine
+# Use Node.js 20 LTS
+FROM node:20-bullseye
 
 # Set working directory
 WORKDIR /usr/src/app
 
-# Install build dependencies for native modules
-RUN apk add --no-cache python3 g++ make bash
+# Copy package files first
+COPY package.json package-lock.json ./
 
-# Copy package.json and package-lock.json
-COPY package*.json ./
+# Install dependencies
+RUN npm install --legacy-peer-deps
 
-# Install dependencies (dev included for admin build)
-RUN npm ci
-
-# Copy the rest of the project
+# Copy the rest of the application
 COPY . .
 
-# Set environment variable for build
-ENV NODE_ENV=development
-
-# Build Strapi admin
+# Build Strapi admin panel
 RUN npm run build
-
-# Remove dev dependencies for production
-RUN npm prune --production
 
 # Expose Strapi default port
 EXPOSE 1337
+
+# Set environment variables
+ENV NODE_ENV=production
+ENV DATABASE_CLIENT=postgres
+ENV DATABASE_HOST=db
+ENV DATABASE_PORT=5432
+ENV DATABASE_NAME=strapi
+ENV DATABASE_USERNAME=strapi
+ENV DATABASE_PASSWORD=strapi
 
 # Start Strapi
 CMD ["npm", "run", "start"]
