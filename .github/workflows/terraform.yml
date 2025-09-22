@@ -21,12 +21,12 @@ jobs:
 
       # 3. Terraform Init
       - name: Terraform Init
-        working-directory: ./Terraform
+        working-directory: ./terraform
         run: terraform init
 
       # 4. Terraform Plan
       - name: Terraform Plan
-        working-directory: ./Terraform
+        working-directory: ./terraform
         run: terraform plan \
           -var="aws_region=${{ secrets.AWS_REGION }}" \
           -var="ecr_registry=${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.${{ secrets.AWS_REGION }}.amazonaws.com" \
@@ -36,7 +36,7 @@ jobs:
 
       # 5. Terraform Apply
       - name: Terraform Apply
-        working-directory: ./Terraform
+        working-directory: ./terraform
         run: terraform apply -auto-approve \
           -var="aws_region=${{ secrets.AWS_REGION }}" \
           -var="ecr_registry=${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.${{ secrets.AWS_REGION }}.amazonaws.com" \
