@@ -1,5 +1,5 @@
 resource "aws_instance" "strapi" {
-  ami           = "ami-0c55b159cbfafe1f0" 
+  ami           = "ami-0c55b159cbfafe1f0"
   instance_type = "t2.micro"
   key_name      = "vinodhini-key"
 
@@ -7,10 +7,8 @@ resource "aws_instance" "strapi" {
   iam_instance_profile = aws_iam_instance_profile.ec2_profile.name
 
   user_data = templatefile("${path.module}/userdata.tpl", {
-    ecr_registry   = var.ecr_registry
-    ecr_repository = var.ecr_repository
-    image_tag      = var.image_tag
-    region         = var.aws_region
+    ecr_image_uri = var.ecr_image_uri
+    region        = var.aws_region
   })
 }
 

@@ -6,39 +6,76 @@ on:
 jobs:
   deploy:
     runs-on: ubuntu-latest
+    env:
+      ECR_IMAGE_URI: ""
 
     steps:
-      - uses: actions/checkout@v3
+      - name: Checkout repo
+        uses: actions/checkout@v4
 
-      - name: Read image tag
-        id: image
-        run: echo "IMAGE_URI=$(cat latest_image.txt)" >> $GITHUB_ENV
+      - name: Download latest image artifact (from CI)
+        uses: actions/download-artifact@v4
+        with:
+          name: latest-image
+          path: ./artifact || .
 
-      - name: Configure AWS
+      - name: Show workspace & artifact (debug)
+        run: |
+          echo "GITHUB_WORKSPACE: $GITHUB_WORKSPACE"
+          pwd
+          ls -la
+          echo "artifact contents:"
+          ls -la artifact || true
+
+      - name: Read image URI from artifact
+        id: read_image
+        run: |
+          if [ -f artifact/latest_image.txt ]; then
+            IMAGE_URI=$(cat artifact/latest_image.txt | tr -d '\r\n')
+            echo "::warning::Found artifact/latest_image.txt => $IMAGE_URI"
+            echo "ECR_IMAGE_URI=$IMAGE_URI" >> $GITHUB_ENV
+          elif [ -f latest_image.txt ]; then
+
+            IMAGE_URI=$(cat latest_image.txt | tr -d '\r\n')
+            echo "::warning::Found repo latest_image.txt => $IMAGE_URI"
+            echo "ECR_IMAGE_URI=$IMAGE_URI" >> $GITHUB_ENV
+          else
+            echo "::error::latest_image.txt not found in artifact or repo. Aborting."
+            exit 1
+          fi
+
+      - name: Configure AWS credentials
         uses: aws-actions/configure-aws-credentials@v4
         with:
           aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           aws-region: ${{ secrets.AWS_REGION }}
 
-      - name: Terraform Init
-        working-directory: ./terraform
-        run: terraform init
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v2
+        with:
+          terraform_version: 1.5.9
 
-      - name: Terraform Plan
+      - name: Terraform init
         working-directory: ./terraform
-        run: terraform plan \
-          -var="aws_region=${{ secrets.AWS_REGION }}" \
-          -var="ecr_registry=${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.${{ secrets.AWS_REGION }}.amazonaws.com" \
-          -var="ecr_repository=${{ secrets.ECR_REPOSITORY }}" \
-          -var="image_tag=${GITHUB_SHA::8}" \
-          -var="key_name=your-keypair-name"
+        run: terraform init -input=false
 
-      - name: Terraform Apply
+      - name: Terraform plan
         working-directory: ./terraform
-        run: terraform apply -auto-approve \
-          -var="aws_region=${{ secrets.AWS_REGION }}" \
-          -var="ecr_registry=${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.${{ secrets.AWS_REGION }}.amazonaws.com" \
-          -var="ecr_repository=${{ secrets.ECR_REPOSITORY }}" \
-          -var="image_tag=${GITHUB_SHA::8}" \
-          -var="key_name=your-keypair-name"
+        env:
+          ECR_IMAGE_URI: ${{ env.ECR_IMAGE_URI }}
+        run: |
+          echo "Using ECR_IMAGE_URI=${ECR_IMAGE_URI}"
+          terraform plan -input=false \
+            -var="aws_region=${{ secrets.AWS_REGION }}" \
+            -var="ecr_image_uri=${ECR_IMAGE_URI}"
+
+      - name: Terraform apply
+        working-directory: ./terraform
+        env:
+          ECR_IMAGE_URI: ${{ env.ECR_IMAGE_URI }}
+        run: |
+          echo "Applying with image: ${ECR_IMAGE_URI}"
+          terraform apply -auto-approve -input=false \
+            -var="aws_region=${{ secrets.AWS_REGION }}" \
+            -var="ecr_image_uri=${ECR_IMAGE_URI}"
