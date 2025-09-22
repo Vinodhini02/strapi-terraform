@@ -6,20 +6,12 @@ on:
 jobs:
   deploy:
     runs-on: ubuntu-latest
+
     steps:
-      - uses: actions/checkout@v4
+      # 1. Checkout code
+      - uses: actions/checkout@v3
 
-      - name: Download image artifact
-        uses: actions/download-artifact@v4
-        with:
-          name: latest-image
-          path: ./artifact
-
-      - name: Read image URI
-        run: |
-          IMAGE_URI=$(cat artifact/latest_image.txt)
-          echo "IMAGE_URI=$IMAGE_URI" >> $GITHUB_ENV
-
+      # 2. Configure AWS credentials
       - name: Configure AWS
         uses: aws-actions/configure-aws-credentials@v4
         with:
@@ -27,18 +19,27 @@ jobs:
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           aws-region: ${{ secrets.AWS_REGION }}
 
-      - name: Setup Terraform
-        uses: hashicorp/setup-terraform@v2
-        with:
-          terraform_version: 1.5.9
+      # 3. Terraform Init
+      - name: Terraform Init
+        working-directory: ./Terraform
+        run: terraform init
 
-      - name: Terraform init
-        working-directory: ./terraform
-        run: terraform init -input=false
+      # 4. Terraform Plan
+      - name: Terraform Plan
+        working-directory: ./Terraform
+        run: terraform plan \
+          -var="aws_region=${{ secrets.AWS_REGION }}" \
+          -var="ecr_registry=${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.${{ secrets.AWS_REGION }}.amazonaws.com" \
+          -var="ecr_repository=${{ secrets.ECR_REPOSITORY }}" \
+          -var="image_tag=${GITHUB_SHA::8}" \
+          -var="key_name=your-keypair-name"
 
-      - name: Terraform apply
-        working-directory: ./terraform
-        env:
-          ECR_IMAGE_URI: ${{ env.IMAGE_URI }}
-        run: |
-          terraform apply -auto-approve -input=false -var="ecr_image_uri=${ECR_IMAGE_URI}"
+      # 5. Terraform Apply
+      - name: Terraform Apply
+        working-directory: ./Terraform
+        run: terraform apply -auto-approve \
+          -var="aws_region=${{ secrets.AWS_REGION }}" \
+          -var="ecr_registry=${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.${{ secrets.AWS_REGION }}.amazonaws.com" \
+          -var="ecr_repository=${{ secrets.ECR_REPOSITORY }}" \
+          -var="image_tag=${GITHUB_SHA::8}" \
+          -var="key_name=your-keypair-name"
