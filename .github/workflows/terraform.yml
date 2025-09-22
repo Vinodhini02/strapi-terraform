@@ -1,0 +1,44 @@
+name: CD - Deploy Strapi with Terraform
+
+on:
+  workflow_dispatch:
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: Read image tag
+        id: image
+        run: echo "IMAGE_URI=$(cat latest_image.txt)" >> $GITHUB_ENV
+
+      - name: Configure AWS
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ secrets.AWS_REGION }}
+
+      - name: Terraform Init
+        working-directory: ./terraform
+        run: terraform init
+
+      - name: Terraform Plan
+        working-directory: ./terraform
+        run: terraform plan \
+          -var="aws_region=${{ secrets.AWS_REGION }}" \
+          -var="ecr_registry=${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.${{ secrets.AWS_REGION }}.amazonaws.com" \
+          -var="ecr_repository=${{ secrets.ECR_REPOSITORY }}" \
+          -var="image_tag=${GITHUB_SHA::8}" \
+          -var="key_name=your-keypair-name"
+
+      - name: Terraform Apply
+        working-directory: ./terraform
+        run: terraform apply -auto-approve \
+          -var="aws_region=${{ secrets.AWS_REGION }}" \
+          -var="ecr_registry=${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.${{ secrets.AWS_REGION }}.amazonaws.com" \
+          -var="ecr_repository=${{ secrets.ECR_REPOSITORY }}" \
+          -var="image_tag=${GITHUB_SHA::8}" \
+          -var="key_name=your-keypair-name"
