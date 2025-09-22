@@ -1,0 +1,5 @@
+- name: Upload Docker image info
+  uses: actions/upload-artifact@v3
+  with:
+    name: latest-image
+    path: latest_image.txt
