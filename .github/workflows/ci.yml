@@ -29,7 +29,7 @@ jobs:
       - name: Build, Tag & Push
         run: |
           IMAGE_TAG=${GITHUB_SHA::8}
-          IMAGE_URI=${{ steps.login-ecr.outputs.registry }}/${{ secrets.ECR_REPOSITORY }}:$IMAGE_TAG
+          IMAGE_URI=${{ steps.login-ecr.outputs.registry }}/${{ secrets.ECR_REPOSITORY }}:145065858967.dkr.ecr.ap-south-1.amazonaws.com/my-strapi-app
           LATEST_URI=${{ steps.login-ecr.outputs.registry }}/${{ secrets.ECR_REPOSITORY }}:latest
 
           docker build --build-arg NODE_OPTIONS="--max_old_space_size=2048" -t $IMAGE_URI .
