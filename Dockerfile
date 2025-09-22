@@ -1,4 +1,3 @@
-
 FROM node:18
 
 WORKDIR /usr/src/app
@@ -14,5 +13,4 @@ RUN npm run build
 RUN npm prune --production
 
 EXPOSE 1337
-
 CMD ["npm", "run", "start"]
