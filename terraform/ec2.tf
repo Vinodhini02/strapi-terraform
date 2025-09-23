@@ -3,7 +3,6 @@ resource "aws_instance" "strapi" {
   instance_type        = "t2.micro"
   key_name             = var.key_name
   security_groups      = [aws_security_group.strapi_sg.name]
-  iam_instance_profile = aws_iam_instance_profile.ec2_profile.name
 
   user_data = templatefile("${path.module}/userdata.tpl", {
     REGISTRY   = var.ecr_registry
