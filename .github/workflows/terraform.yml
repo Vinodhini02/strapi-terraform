@@ -8,42 +8,88 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      # 1. Checkout code
-      - uses: actions/checkout@v3
+      # 1. Checkout repository
+      - name: Checkout repository
+        uses: actions/checkout@v3
 
-      # 2. Configure AWS credentials
-      - name: Configure AWS
+      # 2. Debug: list repo so we can see what the runner has
+      - name: List repository files
+        run: |
+          echo "=== GITHUB_WORKSPACE ==="
+          pwd
+          ls -la
+          echo "=== Recursive listing ==="
+          ls -R
+
+      # 3. Install Terraform
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: 1.7.6
+
+      # 4. Debug Terraform installation
+      - name: Debug Terraform installation
+        run: |
+          echo "PATH: $PATH"
+          echo "which terraform (exit code should be 0)"
+          which terraform || true
+          echo "terraform version (may fail if install didn't work)"
+          terraform version || true
+
+      # 6. IMAGE_TAG 
+      - name: Set IMAGE_TAG
+        run: echo "IMAGE_TAG=${GITHUB_SHA::8}" >> $GITHUB_ENV
+
+      # 7. AWS credentials
+      - name: Configure AWS credentials
         uses: aws-actions/configure-aws-credentials@v4
         with:
           aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           aws-region: ${{ secrets.AWS_REGION }}
 
-      # 3. Set IMAGE_TAG variable
-      - name: Set IMAGE_TAG
-        run: echo "IMAGE_TAG=${GITHUB_SHA::8}" >> $GITHUB_ENV
+      # 8. Pre-check
+      - name: Check terraform directory
+        run: |
+          if [ -d "./terraform" ]; then
+            echo "Found ./terraform, listing contents:"
+            ls -la ./terraform
+          else
+            echo "::error::terraform directory not found at ./terraform"
+            echo "Current directory listing:"
+            ls -la
+            exit 1
+          fi
 
-      # 4. Terraform Init
+      # 9. Terraform init
       - name: Terraform Init
         working-directory: ./terraform
-        run: terraform init
+        run: terraform init -input=false
 
-      # 5. Terraform Plan
+      # 10. Terraform Plan
       - name: Terraform Plan
         working-directory: ./terraform
-        run: terraform plan \
-          -var="aws_region=${{ secrets.AWS_REGION }}" \
-          -var="ecr_registry=${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.${{ secrets.AWS_REGION }}.amazonaws.com" \
-          -var="ecr_repository=${{ secrets.ECR_REPOSITORY }}" \
-          -var="image_tag=${{ env.IMAGE_TAG }}" \
-          -var="key_name=your-keypair-name"
+        env:
+          IMAGE_TAG: ${{ env.IMAGE_TAG }}
+        run: |
+          echo "Running terraform plan using IMAGE_TAG=${IMAGE_TAG}"
+          terraform plan -input=false \
+            -var="aws_region=${{ secrets.AWS_REGION }}" \
+            -var="ecr_registry=${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.${{ secrets.AWS_REGION }}.amazonaws.com" \
+            -var="ecr_repository=${{ secrets.ECR_REPOSITORY }}" \
+            -var="image_tag=${IMAGE_TAG}" \
+            -var="key_name=${{ secrets.EC2_KEY_NAME }}"
 
-      # 6. Terraform Apply
+      # 11. Terraform Apply
       - name: Terraform Apply
         working-directory: ./terraform
-        run: terraform apply -auto-approve \
-          -var="aws_region=${{ secrets.AWS_REGION }}" \
-          -var="ecr_registry=${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.${{ secrets.AWS_REGION }}.amazonaws.com" \
-          -var="ecr_repository=${{ secrets.ECR_REPOSITORY }}" \
-          -var="image_tag=${{ env.IMAGE_TAG }}" \
-          -var="key_name=your-keypair-name"
+        env:
+          IMAGE_TAG: ${{ env.IMAGE_TAG }}
+        run: |
+          echo "Applying terraform with image_tag=${IMAGE_TAG}"
+          terraform apply -auto-approve -input=false \
+            -var="aws_region=${{ secrets.AWS_REGION }}" \
+            -var="ecr_registry=${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.${{ secrets.AWS_REGION }}.amazonaws.com" \
+            -var="ecr_repository=${{ secrets.ECR_REPOSITORY }}" \
+            -var="image_tag=${IMAGE_TAG}" \
+            -var="key_name=${{ secrets.EC2_KEY_NAME }}"
