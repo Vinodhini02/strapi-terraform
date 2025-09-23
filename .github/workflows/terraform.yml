@@ -8,8 +8,10 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
+      # 1. Checkout the repo
       - uses: actions/checkout@v3
 
+      # 2. Configure AWS credentials
       - name: Configure AWS
         uses: aws-actions/configure-aws-credentials@v4
         with:
@@ -17,24 +19,24 @@ jobs:
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           aws-region: ${{ secrets.AWS_REGION }}
 
-      - name: Install Terraform manually
-        run: |
-          sudo apt-get update -y
-          sudo apt-get install -y wget unzip
-          wget https://releases.hashicorp.com/terraform/1.6.6/terraform_1.6.6_linux_amd64.zip
-          unzip terraform_1.6.6_linux_amd64.zip
-          sudo mv terraform /usr/local/bin/
-          terraform version
+      # 3. Install Terraform
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v2
+        with:
+          terraform_version: 1.6.6
 
+      # 4. Set IMAGE_TAG variable (first 8 characters of commit SHA)
       - name: Set IMAGE_TAG
         run: echo "IMAGE_TAG=${GITHUB_SHA::8}" >> $GITHUB_ENV
 
+      # 5. Terraform Init
       - name: Terraform Init
-        working-directory: ./strapi-terraform/terraform
+        working-directory: ./terraform
         run: terraform init
 
+      # 6. Terraform Plan
       - name: Terraform Plan
-        working-directory: ./strapi-terraform/terraform
+        working-directory: ./terraform
         run: terraform plan \
           -var="aws_region=${{ secrets.AWS_REGION }}" \
           -var="ecr_registry=${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.${{ secrets.AWS_REGION }}.amazonaws.com" \
@@ -42,8 +44,9 @@ jobs:
           -var="image_tag=${{ env.IMAGE_TAG }}" \
           -var="key_name=your-keypair-name"
 
+      # 7. Terraform Apply
       - name: Terraform Apply
-        working-directory: ./strapi-terraform/terraform
+        working-directory: ./terraform
         run: terraform apply -auto-approve \
           -var="aws_region=${{ secrets.AWS_REGION }}" \
           -var="ecr_registry=${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.${{ secrets.AWS_REGION }}.amazonaws.com" \
