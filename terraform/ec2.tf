@@ -1,5 +1,5 @@
 resource "aws_instance" "strapi" {
-  ami                  = "ami-0c55b159cbfafe1f0"
+  ami                  = "ami-02d26659fd82cf299"
   instance_type        = "t2.micro"
   key_name             = var.key_name
   security_groups      = [aws_security_group.strapi_sg.name]
