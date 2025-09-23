@@ -11,13 +11,7 @@ jobs:
       # 1. Checkout code
       - uses: actions/checkout@v3
 
-      # 2. Setup Terraform
-      - name: Setup Terraform
-        uses: hashicorp/setup-terraform@v2
-        with:
-          terraform_version: 1.6.6
-
-      # 3. Configure AWS credentials
+      # 2. Configure AWS credentials
       - name: Configure AWS
         uses: aws-actions/configure-aws-credentials@v4
         with:
@@ -25,7 +19,13 @@ jobs:
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           aws-region: ${{ secrets.AWS_REGION }}
 
-      # 4. Set IMAGE_TAG environment variable
+      # 3. Setup Terraform
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v2
+        with:
+          terraform_version: 1.6.6
+
+      # 4. Set IMAGE_TAG variable
       - name: Set IMAGE_TAG
         run: echo "IMAGE_TAG=${GITHUB_SHA::8}" >> $GITHUB_ENV
 
