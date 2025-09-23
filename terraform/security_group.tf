@@ -1,5 +1,5 @@
 resource "aws_security_group" "strapi_sg" {
-  name        = "strapi-sg-vinu"
+  name        = "strapi-sg-10"
   description = "Allow SSH and Strapi HTTP"
 
   ingress {
