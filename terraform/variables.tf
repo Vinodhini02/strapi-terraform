@@ -1,5 +1,26 @@
-variable "aws_region" {}
-variable "ecr_registry" {}
-variable "ecr_repository" {}
-variable "image_tag" {}
-variable "key_name" {}
+variable "aws_region" {
+  description = "AWS region to deploy resources"
+  type        = string
+  default     = "us-east-1"
+}
+
+variable "ecr_registry" {
+  description = "AWS ECR registry URI"
+  type        = string
+}
+
+variable "ecr_repository" {
+  description = "ECR repository name"
+  type        = string
+}
+
+variable "image_tag" {
+  description = "Docker image tag in ECR"
+  type        = string
+  default     = "latest"
+}
+
+variable "key_name" {
+  description = "EC2 key pair name for SSH access"
+  type        = string
+}
