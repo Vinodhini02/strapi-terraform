@@ -12,48 +12,35 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v3
 
-      # 2. Debug: list repo so we can see what the runner has
-      - name: List repository files
-        run: |
-          echo "=== GITHUB_WORKSPACE ==="
-          pwd
-          ls -la
-          echo "=== Recursive listing ==="
-          ls -R
-
-      # 3. Install Terraform
+      # 2. Setup Terraform 
       - name: Setup Terraform
         uses: hashicorp/setup-terraform@v3
         with:
-          terraform_version: 1.7.6
+          terraform_version: 1.6.9
 
-      # 4. Debug Terraform installation
+      # 3. Debug Terraform installation
       - name: Debug Terraform installation
         run: |
           echo "PATH: $PATH"
-          echo "which terraform (exit code should be 0)"
+          echo "which terraform (should print a path)"
           which terraform || true
-          echo "terraform version (may fail if install didn't work)"
+          echo "terraform version (should print v1.6.9)"
           terraform version || true
 
-      # 6. IMAGE_TAG 
-      - name: Set IMAGE_TAG
-        run: echo "IMAGE_TAG=${GITHUB_SHA::8}" >> $GITHUB_ENV
+      # 4. Quick repo listing to debug path issues
+      - name: List repository files (debug)
+        run: |
+          echo "PWD: $(pwd)"
+          ls -la
+          echo "Recursive listing (top level):"
+          ls -R | sed -n '1,200p'
 
-      # 7. AWS credentials
-      - name: Configure AWS credentials
-        uses: aws-actions/configure-aws-credentials@v4
-        with:
-          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
-          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-          aws-region: ${{ secrets.AWS_REGION }}
-
-      # 8. Pre-check
+      # 5. Ensure terraform directory exists and show contents
       - name: Check terraform directory
         run: |
           if [ -d "./terraform" ]; then
             echo "Found ./terraform, listing contents:"
-            ls -la ./terraform
+            ls -la ./terraform || true
           else
             echo "::error::terraform directory not found at ./terraform"
             echo "Current directory listing:"
@@ -61,12 +48,24 @@ jobs:
             exit 1
           fi
 
-      # 9. Terraform init
+      # 6. Set IMAGE_TAG variable
+      - name: Set IMAGE_TAG
+        run: echo "IMAGE_TAG=${GITHUB_SHA::8}" >> $GITHUB_ENV
+
+      # 7. Configure AWS credentials (from GitHub Secrets)
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ secrets.AWS_REGION }}
+
+      # 8. Terraform init
       - name: Terraform Init
         working-directory: ./terraform
         run: terraform init -input=false
 
-      # 10. Terraform Plan
+      # 9. Terraform Plan
       - name: Terraform Plan
         working-directory: ./terraform
         env:
@@ -80,7 +79,7 @@ jobs:
             -var="image_tag=${IMAGE_TAG}" \
             -var="key_name=${{ secrets.EC2_KEY_NAME }}"
 
-      # 11. Terraform Apply
+      # 10. Terraform Apply
       - name: Terraform Apply
         working-directory: ./terraform
         env:
