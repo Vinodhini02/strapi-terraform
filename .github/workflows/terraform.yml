@@ -8,10 +8,8 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      # 1️⃣heckout code
       - uses: actions/checkout@v3
 
-      # 2️⃣onfigure AWS credentials
       - name: Configure AWS
         uses: aws-actions/configure-aws-credentials@v4
         with:
@@ -19,26 +17,22 @@ jobs:
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           aws-region: ${{ secrets.AWS_REGION }}
 
-      # Setup Terraform
-      - name: Setup Terraform
-        uses: hashicorp/setup-terraform@v2
-        with:
-          terraform_version: 1.6.6
+      - name: Install Terraform manually
+        run: |
+          sudo apt-get update -y
+          sudo apt-get install -y wget unzip
+          wget https://releases.hashicorp.com/terraform/1.6.6/terraform_1.6.6_linux_amd64.zip
+          unzip terraform_1.6.6_linux_amd64.zip
+          sudo mv terraform /usr/local/bin/
+          terraform version
 
-      # 4️⃣ebug Terraform installation
-      - name: Check Terraform
-        run: terraform version
-
-      # 5️⃣et IMAGE_TAG variable
       - name: Set IMAGE_TAG
         run: echo "IMAGE_TAG=${GITHUB_SHA::8}" >> $GITHUB_ENV
 
-      # 6️⃣erraform Init
       - name: Terraform Init
         working-directory: ./strapi-terraform/terraform
         run: terraform init
 
-      # 7️⃣erraform Plan
       - name: Terraform Plan
         working-directory: ./strapi-terraform/terraform
         run: terraform plan \
@@ -48,7 +42,6 @@ jobs:
           -var="image_tag=${{ env.IMAGE_TAG }}" \
           -var="key_name=your-keypair-name"
 
-      # 8️⃣erraform Apply
       - name: Terraform Apply
         working-directory: ./strapi-terraform/terraform
         run: terraform apply -auto-approve \
