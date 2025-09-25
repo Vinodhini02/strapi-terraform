@@ -30,12 +30,12 @@ resource "aws_ecs_task_definition" "strapi_task" {
   family                   = "strapi-task"
   network_mode             = "awsvpc"
   requires_compatibilities = ["FARGATE"]
-  cpu                      = "512"
-  memory                   = "1024"
+  cpu                      = var.cpu
+  memory                   = var.memory
   execution_role_arn       = aws_iam_role.ecs_task_execution.arn
 
   container_definitions = jsonencode([{
-    name      = "strapi"
+    name      = var.app_name
     image     = var.docker_image
     essential = true
     portMappings = [{
@@ -47,21 +47,21 @@ resource "aws_ecs_task_definition" "strapi_task" {
 
 # ECS Service
 resource "aws_ecs_service" "strapi_service" {
-  name            = var.ecs_service_name
+  name            = var.app_name
   cluster         = aws_ecs_cluster.strapi.id
   task_definition = aws_ecs_task_definition.strapi_task.arn
   desired_count   = var.desired_count
   launch_type     = "FARGATE"
 
   network_configuration {
-    subnets         = data.aws_subnet_ids.public.ids
-    security_groups = [aws_security_group.strapi_sg.id]
+    subnets          = data.aws_subnet_ids.public.ids
+    security_groups  = [aws_security_group.strapi_sg.id]
     assign_public_ip = true
   }
 
   load_balancer {
     target_group_arn = aws_lb_target_group.strapi_tg.arn
-    container_name   = "strapi"
+    container_name   = var.app_name
     container_port   = var.container_port
   }
 
