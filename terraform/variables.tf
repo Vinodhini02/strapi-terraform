@@ -1,4 +1,4 @@
-variable "aws_region" {
+variable "region" {
   default = "ap-south-1"
 }
 
@@ -6,12 +6,20 @@ variable "cluster_name" {
   default = "strapi-cluster"
 }
 
-variable "ecs_service_name" {
-  default = "strapi-service"
+variable "app_name" {
+  default = "strapi-app"
 }
 
-variable "docker_image" {
-  default = "145065858967.dkr.ecr.ap-south-1.amazonaws.com/my-strapi-app:latest"
+variable "desired_count" {
+  default = 1
+}
+
+variable "cpu" {
+  default = 512
+}
+
+variable "memory" {
+  default = 1024
 }
 
 variable "container_port" {

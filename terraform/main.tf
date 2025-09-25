@@ -50,7 +50,7 @@ resource "aws_ecs_service" "strapi_service" {
   name            = var.ecs_service_name
   cluster         = aws_ecs_cluster.strapi.id
   task_definition = aws_ecs_task_definition.strapi_task.arn
-  desired_count   = 1
+  desired_count   = var.desired_count
   launch_type     = "FARGATE"
 
   network_configuration {
