@@ -1,26 +1,19 @@
 variable "aws_region" {
-  description = "AWS region to deploy resources"
-  type        = string
-  default     = "ap-south-1"
+  default = "ap-south-1"
 }
 
-variable "ecr_registry" {
-  description = "AWS ECR registry URI"
-  type        = string
+variable "cluster_name" {
+  default = "strapi-cluster"
 }
 
-variable "ecr_repository" {
-  description = "ECR repository name"
-  type        = string
+variable "ecs_service_name" {
+  default = "strapi-service"
 }
 
-variable "image_tag" {
-  description = "Docker image tag in ECR"
-  type        = string
-  default     = "latest"
+variable "docker_image" {
+  default = "145065858967.dkr.ecr.ap-south-1.amazonaws.com/my-strapi-app:latest"
 }
 
-variable "key_name" {
-  description = "EC2 key pair name for SSH access"
-  type        = string
+variable "container_port" {
+  default = 1337
 }

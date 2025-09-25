@@ -1,4 +1,4 @@
-name: CI - Build & Push Docker Image
+name: CI – Build & Push Docker
 
 on:
   push:
@@ -7,56 +7,38 @@ on:
 
 jobs:
   build-and-push:
-    name: Build and push to ECR
     runs-on: ubuntu-latest
 
+    env:
+      AWS_REGION: ap-south-1
+      ECR_REPOSITORY: my-strapi-app
+
     steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
+    - name: Checkout code
+      uses: actions/checkout@v3
 
-      - name: Configure AWS credentials
-        uses: aws-actions/configure-aws-credentials@v4
-        with:
-          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
-          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-          aws-region: ${{ secrets.AWS_REGION }}
+    - name: Configure AWS credentials
+      uses: aws-actions/configure-aws-credentials@v2
+      with:
+        aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+        aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+        aws-region: ${{ env.AWS_REGION }}
 
-      - name: Log in to Amazon ECR
-        id: login-ecr
-        uses: aws-actions/amazon-ecr-login@v2
+    - name: Get commit SHA for image tag
+      id: vars
+      run: echo "IMAGE_TAG=$(git rev-parse --short HEAD)" >> $GITHUB_ENV
 
-      - name: Build, tag and push Docker image
-        id: build-image
-        env:
-          ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
-          ECR_REPOSITORY: ${{ secrets.ECR_REPOSITORY }}
-        run: |
-          set -euo pipefail
+    - name: Login to ECR
+      run: |
+        aws ecr get-login-password --region $AWS_REGION | docker login --username AWS --password-stdin ${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.$AWS_REGION.amazonaws.com
 
-          # image tag: first 8 chars of the commit SHA
-          IMAGE_TAG=${GITHUB_SHA:0:8}
+    - name: Build Docker image
+      run: docker build -t $ECR_REPOSITORY .
 
-          # registry and repository
-          REGISTRY="${ECR_REGISTRY}"
-          REPOSITORY="${ECR_REPOSITORY}"
+    - name: Tag Docker image
+      run: |
+        docker tag $ECR_REPOSITORY:latest ${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.$AWS_REGION.amazonaws.com/$ECR_REPOSITORY:$IMAGE_TAG
 
-          # single well-formed image URI
-          IMAGE_URI="${REGISTRY}/${REPOSITORY}:${IMAGE_TAG}"
-
-          echo "Registry: $REGISTRY"
-          echo "Repository: $REPOSITORY"
-          echo "Image tag: $IMAGE_TAG"
-          echo "Image URI: $IMAGE_URI"
-
-          # build and push
-          docker build -t "$IMAGE_URI" .
-          docker push "$IMAGE_URI"
-
-          # persist the full image URI in a file for downstream workflows
-          echo "$IMAGE_URI" > latest_image.txt
-
-      - name: Upload image URI artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: latest-image
-          path: latest_image.txt
+    - name: Push Docker image to ECR
+      run: |
+        docker push ${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.$AWS_REGION.amazonaws.com/$ECR_REPOSITORY:$IMAGE_TAG

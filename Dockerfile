@@ -1,19 +1,17 @@
-
-FROM node:18-bullseye
+FROM node:20
 
 WORKDIR /usr/src/app
 
 COPY package*.json ./
 
-RUN npm ci
+RUN npm install --production
 
 COPY . .
-
-ARG NODE_OPTIONS
-ENV NODE_OPTIONS=$NODE_OPTIONS
 
 RUN npm run build
 
 EXPOSE 1337
 
-CMD ["npm", "run", "start"]
+ENV NODE_ENV=production
+
+CMD ["npm", "start"]

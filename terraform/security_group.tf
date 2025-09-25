@@ -1,17 +1,18 @@
 resource "aws_security_group" "strapi_sg" {
-  name        = "strapi-sg-15"
-  description = "Allow SSH and Strapi HTTP"
+  name        = "strapi-sg"
+  description = "Allow HTTP and Strapi port"
+  vpc_id      = data.aws_vpc.default.id
 
   ingress {
-    from_port   = 22
-    to_port     = 22
+    from_port   = 80
+    to_port     = 80
     protocol    = "tcp"
     cidr_blocks = ["0.0.0.0/0"]
   }
 
   ingress {
-    from_port   = 1337
-    to_port     = 1337
+    from_port   = var.container_port
+    to_port     = var.container_port
     protocol    = "tcp"
     cidr_blocks = ["0.0.0.0/0"]
   }
@@ -22,4 +23,6 @@ resource "aws_security_group" "strapi_sg" {
     protocol    = "-1"
     cidr_blocks = ["0.0.0.0/0"]
   }
+
+  tags = { Name = "strapi-sg" }
 }
